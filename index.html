@@ -1,32 +1,774 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Supabase Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Productivity Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .countdown {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #764ba2;
+            margin-bottom: 10px;
+        }
+
+        .countdown-label {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .date {
+            font-size: 1.2rem;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .connection-status {
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-disconnected {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .image-upload {
+            position: relative;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .image-upload:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.05);
+        }
+
+        .image-upload.has-image {
+            border: none;
+            padding: 0;
+        }
+
+        .image-upload.uploading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .uploaded-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #764ba2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .progress-item {
+            margin-bottom: 25px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="number"], input[type="range"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="number"]:focus, input[type="range"]:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 8px;
+            background: #f0f0f0;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #764ba2;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .productivity-display {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .quote {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .save-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .countdown {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Supabase Connection Test</h1>
-    <div id="status">Testing...</div>
-    
+    <div class="container">
+        <div class="header">
+            <div class="countdown" id="countdown">0</div>
+            <div class="countdown-label">Days left for Final MBBS</div>
+            <div class="date" id="current-date"></div>
+            <div class="connection-status" id="connection-status">
+                Database: Not Connected
+            </div>
+        </div>
+
+
+
+        <div class="main-grid">
+            <div class="card">
+                <h2 class="card-title">📸 Daily Inspiration Image</h2>
+                <div class="image-upload" onclick="handleImageUpload('daily-image')">
+                    <div class="upload-text">Click to upload your daily inspiration image</div>
+                    <input type="file" id="daily-image" accept="image/*">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">📷 Photo of the Day</h2>
+                <div class="image-upload" onclick="handleImageUpload('photo-day')">
+                    <div class="upload-text">Click to upload your photo of the day</div>
+                    <input type="file" id="photo-day" accept="image/*">
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <h2 class="card-title">📊 Today's Productivity</h2>
+            
+            <div class="input-group">
+                <label for="productivity-slider">Overall Productivity (0-100%)</label>
+                <input type="range" id="productivity-slider" min="0" max="100" value="50">
+                <div class="productivity-display" id="productivity-display">50%</div>
+            </div>
+
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>📚 Study Time</span>
+                    <span id="study-time-display">4.0 / 8.0 hours</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="study-progress" style="width: 50%"></div>
+                </div>
+                <div class="input-group" style="margin-top: 15px;">
+                    <label for="study-hours">Study Hours Completed:</label>
+                    <input type="number" id="study-hours" min="0" max="24" step="0.5" value="4" placeholder="Enter study hours">
+                </div>
+                <div class="input-group">
+                    <label for="study-target">Daily Study Target (hours):</label>
+                    <input type="number" id="study-target" min="1" max="24" step="0.5" value="8" placeholder="Enter target hours">
+                </div>
+            </div>
+
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>🎯 Daily Goals</span>
+                    <span id="goals-display">3 / 5 completed</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="goals-progress" style="width: 60%"></div>
+                </div>
+                <div class="input-group" style="margin-top: 15px;">
+                    <label for="goals-completed">Goals Completed:</label>
+                    <input type="number" id="goals-completed" min="0" max="20" value="3" placeholder="Goals completed">
+                </div>
+                <div class="input-group">
+                    <label for="goals-total">Total Daily Goals:</label>
+                    <input type="number" id="goals-total" min="1" max="20" value="5" placeholder="Total goals">
+                </div>
+            </div>
+
+            <button class="save-btn" onclick="saveDailyData()">💾 Save Today's Progress</button>
+            <div class="status-message" id="status-message"></div>
+        </div>
+
+        <div class="quote">
+            "Success is the sum of small efforts, repeated day in and day out. Keep pushing towards your MBBS dreams!" 🎓✨
+        </div>
+    </div>
+
     <script>
+        // ============================================
+        // SUPABASE CONFIGURATION
+        // ============================================
+        // Your actual Supabase credentials:
         const SUPABASE_URL = 'https://nthvvcjdtojhigobgefo.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50aHZ2Y2pkdG9qaGlnb2JnZWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzIxNDUsImV4cCI6MjA3MDIwODE0NX0.bguk4UVd18l3gGj6iNv-E0ec0vNNVErT97uOrRXHQBM';
         
-        setTimeout(() => {
-            const statusDiv = document.getElementById('status');
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        let supabase = null;
+        let isConnected = false;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        // Initialize the application
+        async function initializeApp() {
+            updateCountdown();
+            updateCurrentDate();
+            updateProgress();
             
+            // Check if Supabase library is loaded
             if (typeof window.supabase === 'undefined') {
-                statusDiv.innerHTML = '❌ Supabase library not loaded';
+                console.error('Supabase library not loaded');
+                updateConnectionStatus(false, 'Library Not Loaded');
+                showStatus('Supabase library failed to load. Check your internet connection.', 'error');
+                loadTodayData();
                 return;
             }
             
-            statusDiv.innerHTML = '✅ Supabase library loaded!';
+            // Try to connect to Supabase if credentials are provided
+            if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+                await connectSupabase();
+            } else {
+                updateConnectionStatus(false, 'Not Configured');
+                showStatus('Add your Supabase credentials to the JavaScript code to enable cloud features', 'error');
+            }
             
-            // Test connection
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            statusDiv.innerHTML += '<br>📡 Testing connection...';
+            // Load today's data
+            loadTodayData();
             
-        }, 1000);
+            // Update countdown every day
+            setInterval(updateCountdown, 24 * 60 * 60 * 1000);
+        }
+
+        // Connect to Supabase
+        async function connectSupabase() {
+            try {
+                // Check if Supabase is available
+                if (typeof window.supabase === 'undefined') {
+                    throw new Error('Supabase library is not loaded');
+                }
+                
+                // Initialize Supabase client
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Test the connection
+                const { data, error } = await supabase.from('daily_progress').select('count', { count: 'exact' });
+                
+                if (error && error.code === 'PGRST116') {
+                    // Table doesn't exist - this is expected for new setups
+                    showStatus('Connected to Supabase! Please set up database tables', 'error');
+                    updateConnectionStatus(true, 'Connected - Setup Required');
+                    isConnected = true;
+                } else if (error) {
+                    throw error;
+                } else {
+                    showStatus('Successfully connected to Supabase database!', 'success');
+                    updateConnectionStatus(true, 'Connected');
+                    isConnected = true;
+                }
+                
+            } catch (error) {
+                console.error('Supabase connection error:', error);
+                showStatus('Failed to connect to Supabase: ' + error.message, 'error');
+                updateConnectionStatus(false, 'Connection Failed');
+                isConnected = false;
+            }
+        }
+
+        // Update connection status display
+        function updateConnectionStatus(connected, message) {
+            const statusDiv = document.getElementById('connection-status');
+            statusDiv.textContent = 'Database: ' + message;
+            statusDiv.className = connected ? 'connection-status status-connected' : 'connection-status status-disconnected';
+        }
+
+        // Calculate days until September 22, 2025
+        function updateCountdown() {
+            const targetDate = new Date('2025-09-22');
+            const currentDate = new Date();
+            const timeDifference = targetDate - currentDate;
+            const daysLeft = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
+            
+            document.getElementById('countdown').textContent = daysLeft;
+        }
+
+        // Display current date
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Handle image upload
+        async function handleImageUpload(inputId) {
+            const input = document.getElementById(inputId);
+            const uploadDiv = input.parentNode;
+            
+            input.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Show loading state
+                uploadDiv.classList.add('uploading');
+                uploadDiv.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <div class="upload-text">Uploading...</div>
+                `;
+                
+                if (supabase && isConnected) {
+                    try {
+                        // Upload to Supabase Storage
+                        const fileName = `${inputId}_${Date.now()}_${file.name}`;
+                        const { data, error } = await supabase.storage
+                            .from('daily-images')
+                            .upload(fileName, file);
+                        
+                        if (error) throw error;
+                        
+                        // Get public URL
+                        const { data: urlData } = supabase.storage
+                            .from('daily-images')
+                            .getPublicUrl(fileName);
+                        
+                        displayImage(uploadDiv, urlData.publicUrl, inputId);
+                        showStatus('Image uploaded successfully!', 'success');
+                        
+                        // Save image reference to database
+                        const today = new Date().toISOString().split('T')[0];
+                        const imageData = {};
+                        imageData[inputId + '_url'] = urlData.publicUrl;
+                        imageData.date = today;
+                        
+                        await supabase
+                            .from('daily_images')
+                            .upsert(imageData);
+                        
+                    } catch (error) {
+                        console.error('Upload error:', error);
+                        displayImageLocally(uploadDiv, file, inputId);
+                        showStatus('Upload failed, using local storage: ' + error.message, 'error');
+                    }
+                } else {
+                    // Fallback to local display
+                    displayImageLocally(uploadDiv, file, inputId);
+                    showStatus('Using local storage (connect to Supabase for cloud storage)', 'error');
+                }
+            };
+            
+            input.click();
+        }
+
+        // Display image from URL
+        function displayImage(uploadDiv, imageUrl, inputId) {
+            uploadDiv.classList.remove('uploading');
+            uploadDiv.classList.add('has-image');
+            uploadDiv.innerHTML = `<img src="${imageUrl}" alt="Uploaded image" class="uploaded-image">`;
+            
+            uploadDiv.onclick = function() {
+                resetUpload(uploadDiv, inputId);
+            };
+        }
+
+        // Display image locally
+        function displayImageLocally(uploadDiv, file, inputId) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                displayImage(uploadDiv, e.target.result, inputId);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Reset upload area
+        function resetUpload(uploadDiv, inputId) {
+            uploadDiv.classList.remove('has-image', 'uploading');
+            uploadDiv.innerHTML = `
+                <div class="upload-text">Click to upload a new image</div>
+                <input type="file" id="${inputId}" accept="image/*">
+            `;
+            uploadDiv.onclick = function() {
+                handleImageUpload(inputId);
+            };
+        }
+
+        // Save daily data
+        async function saveDailyData() {
+            const saveBtn = document.querySelector('.save-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const data = {
+                date: today,
+                productivity: parseInt(document.getElementById('productivity-slider').value),
+                study_hours: parseFloat(document.getElementById('study-hours').value),
+                study_target: parseFloat(document.getElementById('study-target').value),
+                goals_completed: parseInt(document.getElementById('goals-completed').value),
+                goals_total: parseInt(document.getElementById('goals-total').value),
+                updated_at: new Date().toISOString()
+            };
+            
+            if (supabase && isConnected) {
+                try {
+                    const { error } = await supabase
+                        .from('daily_progress')
+                        .upsert(data);
+                    
+                    if (error) throw error;
+                    
+                    showStatus('Progress saved to database successfully!', 'success');
+                } catch (error) {
+                    console.error('Save error:', error);
+                    saveToLocalStorage(data, today);
+                    showStatus('Database save failed, saved locally: ' + error.message, 'error');
+                }
+            } else {
+                saveToLocalStorage(data, today);
+                showStatus('Saved locally (connect to Supabase for cloud storage)', 'success');
+            }
+            
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Save Today\'s Progress';
+        }
+
+        // Save to localStorage as fallback
+        function saveToLocalStorage(data, today) {
+            const savedData = JSON.parse(localStorage.getItem('dailyProgress') || '{}');
+            savedData[today] = data;
+            localStorage.setItem('dailyProgress', JSON.stringify(savedData));
+        }
+
+        // Load today's data
+        async function loadTodayData() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (supabase && isConnected) {
+                try {
+                    // Load progress data
+                    const { data: progressData, error: progressError } = await supabase
+                        .from('daily_progress')
+                        .select('*')
+                        .eq('date', today)
+                        .single();
+                    
+                    if (progressData && !progressError) {
+                        populateFormData(progressData);
+                    }
+
+                    // Load image data
+                    const { data: imageData, error: imageError } = await supabase
+                        .from('daily_images')
+                        .select('*')
+                        .eq('date', today)
+                        .single();
+                    
+                    if (imageData && !imageError) {
+                        if (imageData.daily_image_url) {
+                            displayImage(document.querySelector('#daily-image').parentNode, imageData.daily_image_url, 'daily-image');
+                        }
+                        if (imageData.photo_day_url) {
+                            displayImage(document.querySelector('#photo-day').parentNode, imageData.photo_day_url, 'photo-day');
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Load error:', error);
+                    loadFromLocalStorage(today);
+                }
+            } else {
+                loadFromLocalStorage(today);
+            }
+        }
+
+        // Load from localStorage
+        function loadFromLocalStorage(today) {
+            const savedData = JSON.parse(localStorage.getItem('dailyProgress') || '{}');
+            if (savedData[today]) {
+                populateFormData(savedData[today]);
+            }
+        }
+
+        // Populate form with saved data
+        function populateFormData(data) {
+            document.getElementById('productivity-slider').value = data.productivity || 50;
+            document.getElementById('study-hours').value = data.study_hours || 4;
+            document.getElementById('study-target').value = data.study_target || 8;
+            document.getElementById('goals-completed').value = data.goals_completed || 3;
+            document.getElementById('goals-total').value = data.goals_total || 5;
+            updateProgress();
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Update progress bars and displays
+        function updateProgress() {
+            // Productivity slider
+            const productivitySlider = document.getElementById('productivity-slider');
+            const productivityDisplay = document.getElementById('productivity-display');
+            
+            productivitySlider.addEventListener('input', function() {
+                productivityDisplay.textContent = this.value + '%';
+            });
+            
+            // Update display immediately
+            productivityDisplay.textContent = productivitySlider.value + '%';
+
+            // Study time progress
+            function updateStudyProgress() {
+                const studyHours = parseFloat(document.getElementById('study-hours').value) || 0;
+                const studyTarget = parseFloat(document.getElementById('study-target').value) || 8;
+                const percentage = Math.min((studyHours / studyTarget) * 100, 100);
+                
+                document.getElementById('study-progress').style.width = percentage + '%';
+                document.getElementById('study-time-display').textContent = `${studyHours} / ${studyTarget} hours`;
+            }
+
+            // Goals progress
+            function updateGoalsProgress() {
+                const goalsCompleted = parseInt(document.getElementById('goals-completed').value) || 0;
+                const goalsTotal = parseInt(document.getElementById('goals-total').value) || 5;
+                const percentage = Math.min((goalsCompleted / goalsTotal) * 100, 100);
+                
+                document.getElementById('goals-progress').style.width = percentage + '%';
+                document.getElementById('goals-display').textContent = `${goalsCompleted} / ${goalsTotal} completed`;
+            }
+
+            // Add event listeners
+            document.getElementById('study-hours').addEventListener('input', updateStudyProgress);
+            document.getElementById('study-target').addEventListener('input', updateStudyProgress);
+            document.getElementById('goals-completed').addEventListener('input', updateGoalsProgress);
+            document.getElementById('goals-total').addEventListener('input', updateGoalsProgress);
+            
+            // Update immediately
+            updateStudyProgress();
+            updateGoalsProgress();
+        }
     </script>
 </body>
 </html>
