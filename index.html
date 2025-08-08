@@ -401,7 +401,110 @@
         <div class="quote">
             "Success is the sum of small efforts, repeated day in and day out. Keep pushing towards your MBBS dreams!" 🎓✨
         </div>
+
+        <!-- Debug Section (Remove after troubleshooting) -->
+        <div class="progress-section" style="margin-top: 20px;">
+            <h3>🔍 Debug Information</h3>
+            <button onclick="testStorageConnection()" class="save-btn" style="background: linear-gradient(135deg, #17a2b8, #138496); margin: 10px 0;">
+                Test Storage Connection
+            </button>
+            <button onclick="listStorageContents()" class="save-btn" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); margin: 10px 0;">
+                List Storage Contents
+            </button>
+            <div id="debug-output" style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
     </div>
+
+    <script>
+        // Debug functions
+        async function testStorageConnection() {
+            const debugDiv = document.getElementById('debug-output');
+            debugDiv.innerHTML = 'Testing storage connection...\n';
+            
+            if (!supabase || !isConnected) {
+                debugDiv.innerHTML += 'ERROR: Not connected to Supabase\n';
+                return;
+            }
+            
+            try {
+                // Test bucket access
+                const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+                if (bucketsError) {
+                    debugDiv.innerHTML += `ERROR listing buckets: ${bucketsError.message}\n`;
+                    return;
+                }
+                
+                debugDiv.innerHTML += `✅ Buckets found: ${buckets.map(b => b.name).join(', ')}\n`;
+                
+                // Check if daily-images bucket exists
+                const dailyImagesBucket = buckets.find(b => b.name === 'daily-images');
+                if (!dailyImagesBucket) {
+                    debugDiv.innerHTML += '❌ daily-images bucket not found!\n';
+                    debugDiv.innerHTML += 'Go to Supabase Dashboard → Storage → Create bucket named "daily-images"\n';
+                    return;
+                }
+                
+                debugDiv.innerHTML += `✅ daily-images bucket found (public: ${dailyImagesBucket.public})\n`;
+                
+                // Test upload permissions with a tiny test file
+                const testFile = new Blob(['test'], { type: 'text/plain' });
+                const testFileName = `test_${Date.now()}.txt`;
+                
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('daily-images')
+                    .upload(testFileName, testFile);
+                
+                if (uploadError) {
+                    debugDiv.innerHTML += `❌ Upload test failed: ${uploadError.message}\n`;
+                    
+                    if (uploadError.message.includes('403')) {
+                        debugDiv.innerHTML += '🔧 Fix: Check storage policies in Supabase Dashboard\n';
+                    }
+                } else {
+                    debugDiv.innerHTML += '✅ Upload test successful\n';
+                    
+                    // Clean up test file
+                    await supabase.storage.from('daily-images').remove([testFileName]);
+                    debugDiv.innerHTML += '✅ Test file cleaned up\n';
+                }
+                
+            } catch (error) {
+                debugDiv.innerHTML += `ERROR: ${error.message}\n`;
+            }
+        }
+        
+        async function listStorageContents() {
+            const debugDiv = document.getElementById('debug-output');
+            debugDiv.innerHTML = 'Listing storage contents...\n';
+            
+            if (!supabase || !isConnected) {
+                debugDiv.innerHTML += 'ERROR: Not connected to Supabase\n';
+                return;
+            }
+            
+            try {
+                const { data: files, error } = await supabase.storage
+                    .from('daily-images')
+                    .list('', { limit: 10 });
+                
+                if (error) {
+                    debugDiv.innerHTML += `ERROR: ${error.message}\n`;
+                    return;
+                }
+                
+                if (files.length === 0) {
+                    debugDiv.innerHTML += 'No files found in storage\n';
+                } else {
+                    debugDiv.innerHTML += `Found ${files.length} files:\n`;
+                    files.forEach(file => {
+                        debugDiv.innerHTML += `- ${file.name} (${file.metadata?.size || 'unknown'} bytes)\n`;
+                    });
+                }
+                
+            } catch (error) {
+                debugDiv.innerHTML += `ERROR: ${error.message}\n`;
+            }
+        }
 
     <script>
         // ============================================
@@ -525,6 +628,18 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    showStatus('Please select an image file', 'error');
+                    return;
+                }
+                
+                // Validate file size (5MB limit)
+                if (file.size > 5 * 1024 * 1024) {
+                    showStatus('Image size must be less than 5MB', 'error');
+                    return;
+                }
+                
                 // Show loading state
                 uploadDiv.classList.add('uploading');
                 uploadDiv.innerHTML = `
@@ -534,36 +649,78 @@
                 
                 if (supabase && isConnected) {
                     try {
-                        // Upload to Supabase Storage
-                        const fileName = `${inputId}_${Date.now()}_${file.name}`;
-                        const { data, error } = await supabase.storage
-                            .from('daily-images')
-                            .upload(fileName, file);
+                        // Create unique filename with timestamp
+                        const timestamp = Date.now();
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${inputId}_${timestamp}.${fileExt}`;
                         
-                        if (error) throw error;
+                        console.log('Uploading file:', fileName, 'Size:', file.size);
+                        
+                        // Upload to Supabase Storage
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('daily-images')
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+                        
+                        if (uploadError) {
+                            console.error('Upload error:', uploadError);
+                            throw uploadError;
+                        }
+                        
+                        console.log('Upload successful:', uploadData);
                         
                         // Get public URL
                         const { data: urlData } = supabase.storage
                             .from('daily-images')
                             .getPublicUrl(fileName);
                         
+                        if (!urlData || !urlData.publicUrl) {
+                            throw new Error('Failed to get public URL');
+                        }
+                        
+                        console.log('Public URL:', urlData.publicUrl);
+                        
                         displayImage(uploadDiv, urlData.publicUrl, inputId);
                         showStatus('Image uploaded successfully!', 'success');
                         
                         // Save image reference to database
                         const today = new Date().toISOString().split('T')[0];
-                        const imageData = {};
-                        imageData[inputId + '_url'] = urlData.publicUrl;
-                        imageData.date = today;
+                        const imageData = {
+                            date: today,
+                            updated_at: new Date().toISOString()
+                        };
+                        imageData[inputId.replace('-', '_') + '_url'] = urlData.publicUrl;
                         
-                        await supabase
+                        const { error: dbError } = await supabase
                             .from('daily_images')
                             .upsert(imageData);
                         
+                        if (dbError) {
+                            console.warn('Database save error:', dbError);
+                            showStatus('Image uploaded but database save failed', 'error');
+                        }
+                        
                     } catch (error) {
-                        console.error('Upload error:', error);
+                        console.error('Complete upload error:', error);
+                        
+                        // Provide specific error messages
+                        let errorMessage = 'Upload failed: ';
+                        if (error.message.includes('The resource already exists')) {
+                            errorMessage += 'File already exists. Try again.';
+                        } else if (error.message.includes('Invalid key')) {
+                            errorMessage += 'Invalid storage configuration.';
+                        } else if (error.message.includes('403')) {
+                            errorMessage += 'Permission denied. Check storage policies.';
+                        } else if (error.message.includes('404')) {
+                            errorMessage += 'Storage bucket not found.';
+                        } else {
+                            errorMessage += error.message;
+                        }
+                        
                         displayImageLocally(uploadDiv, file, inputId);
-                        showStatus('Upload failed, using local storage: ' + error.message, 'error');
+                        showStatus(errorMessage, 'error');
                     }
                 } else {
                     // Fallback to local display
