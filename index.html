@@ -408,8 +408,8 @@
         // SUPABASE CONFIGURATION
         // ============================================
         // Replace these with your actual Supabase credentials:
-        const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL'; // e.g., 'https://your-project.supabase.co'
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Your anon/public key from Supabase dashboard
+        const SUPABASE_URL = 'https://nthvvcjdtojhigobgefo.supabase.co'; // e.g., 'https://your-project.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50aHZ2Y2pkdG9qaGlnb2JnZWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzIxNDUsImV4cCI6MjA3MDIwODE0NX0.bguk4UVd18l3gGj6iNv-E0ec0vNNVErT97uOrRXHQBM'; // Your anon/public key from Supabase dashboard
         
         // ============================================
         // GLOBAL VARIABLES
@@ -429,7 +429,7 @@
             updateProgress();
             
             // Try to connect to Supabase if credentials are provided
-            if (SUPABASE_URL !== 'https://nthvvcjdtojhigobgefo.supabase.co' && SUPABASE_ANON_KEY !== 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50aHZ2Y2pkdG9qaGlnb2JnZWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzIxNDUsImV4cCI6MjA3MDIwODE0NX0.bguk4UVd18l3gGj6iNv-E0ec0vNNVErT97uOrRXHQBM') {
+            if (SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
                 await connectSupabase();
             } else {
                 updateConnectionStatus(false, 'Not Configured');
